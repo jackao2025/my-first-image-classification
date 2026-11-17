@@ -42,7 +42,7 @@ dataloaders = {x:torch.utils.data.DataLoader(image_datasets[x],batch_size=4,shuf
                     for x in ['train','valid']}
 # 实际上是把前面创建的两个数据集对象交给 DataLoader;DataLoader：负责按照批次（Batch）读取数据
 
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train','valis']}
+dataset_sizes = {x: len(image_datasets[x]) for x in ['train','valid']}
 class_names = image_datasets['train'].classes  #从ImageFolder数据集中获取所有类别的名称列表
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -80,17 +80,17 @@ class CNN_1(nn.Module):
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=3,out_channels=16,kernel_size=3,stride=1,padding=1),
             nn.GELU(),
-            nn.MaxPool2d(kernal_size=2),
+            nn.MaxPool2d(kernel_size=2),
         )    # 224*224 -> 112*112
         self.conv2 = nn.Sequential(
-                    nn.Conv2d(in_channels=16,out_channels=32,kernel_size=3,stride=1,padding=1),
-                    nn.GELU(),
-                    nn.MaxPool2d(kernal_size=2),
+            nn.Conv2d(in_channels=16,out_channels=32,kernel_size=3,stride=1,padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2),
         )   # 112*112 ->56*56
         self.conv3 = nn.Sequential(
-                    nn.Conv2d(in_channels=32,out_channels=64,kernel_size=3,stride=1,padding=1),
-                    nn.GELU(),
-                    nn.MaxPool2d(kernal_size=2),
+            nn.Conv2d(in_channels=32,out_channels=64,kernel_size=3,stride=1,padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2),
         )   # 56*56 -> 28*28 , 此时x.shape = [4(batch_size), 64, 28, 28] ,卷积层输出四维tensor
         self.out = nn.Linear(64*28*28,2)
         """
@@ -114,3 +114,72 @@ class CNN_1(nn.Module):
 
 model_1 = CNN_1()  # 实例化模型
 model_1 = model_1.to(device)    # 将模型移动到指定设备
+
+
+
+
+
+"""---------训练模型---------"""
+def train(train_loader,model,loss_fn,optimizer):
+    # 数据加载器，神经网络模型，损失函数，优化器
+    model.train()
+    batch_num = 1   # 指示训练到第几个batch了  
+    for inputs,labels in train_loader:
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+        pred = model(inputs)
+        loss = loss_fn(pred,labels) #计算出模型预测的损失, loss是一个张量
+
+        optimizer.zero_grad()   # 把上一批计算的梯度清理干净。
+        loss.backward() # 根据预测结果的损失，逆向计算梯度
+        optimizer.step()   # 根据梯度调整模型参数
+
+        loss_value = loss.item()    # 获取损失参数;  .item()用于从张量中提取单个元素的值，并将其转换为Python基本类型
+        print(f"{loss_value}  {batch_num}")
+        batch_num += 1
+
+
+
+
+
+"""---------定义测试函数---------"""
+def test(dataloader,model,loss_fn):
+    size = len(dataloader.dataset)
+    model.eval()
+    test_loss,correct = 0,0     # 记录累计损失和累计正确个数
+    with torch.no_grad:  # 测试的时候不跟踪梯度
+        for inputs,labels in dataloader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
+            pred = model(inputs)
+            loss = loss_fn(pred,labels)
+            test_loss += loss.item() * inputs.size(0)   # inputs.size(0)是这个batch中有多少张图片
+            correct += (pred.argmax(1)==labels).sum().item()
+            # numpy.argmax() 函数可以返回最大值的索引，dim = 1表示沿下标为1的维度进行依个比较
+
+        avg_loss = test_loss/size
+        accuracy = correct/size
+
+        print(f"Test result:\n Accuracy:{(accuracy*100)}%, Avg_loss:{(avg_loss*100)}%")
+
+
+"""---------定义损失函数和优化器---------"""
+loss_fn = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model_1.parameters(),lr=0.001)
+
+
+"""---------训练与测试模型---------"""
+train(dataloaders['train'],CNN_1,loss_fn,optimizer)
+test(dataloaders['valid'],CNN_1,loss_fn)
+
+
+"""---------训练多个周期,然后测试---------"""
+epochs = 50
+for t in range(epochs):
+    print(f"epoch {t+1}:\n")
+    train(dataloaders['train'],CNN_1,loss_fn,optimizer)
+print("done")
+test(dataloaders['valid'],CNN_1,loss_fn)
+
+
