@@ -1,0 +1,29 @@
+# ---- 数据集（绝对不要传） ----
+dataset/
+data/
+*.zip
+*.tar.gz
+
+# ---- 模型权重文件（通常很大，如果不大想传可删除此行） ----
+*.pth
+*.pt
+*.onnx
+checkpoints/
+
+# ---- Python 专属缓存 ----
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ---- 虚拟环境 ----
+venv/
+env/
+.venv/
+
+# ---- 编辑器配置文件 ----
+.vscode/
+.idea/
+
+# ---- 系统文件 ----
+.DS_Store
+Thumbs.db
