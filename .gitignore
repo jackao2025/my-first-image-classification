@@ -9,6 +9,7 @@ data/
 *.pt
 *.onnx
 checkpoints/
+experiments/
 
 # ---- Python 专属缓存 ----
 __pycache__/
